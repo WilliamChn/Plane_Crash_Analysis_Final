@@ -20,4 +20,6 @@ Make sure you have **Python 3.8 or newer** installed. Then install the requireme
 
 pip install pandas matplotlib seaborn scikit-learn streamlit wordcloud
 
+make sure you are in the PLane_crash_analysis_Final directory and run the following command:
 
+python -m streamlit run app.py  
