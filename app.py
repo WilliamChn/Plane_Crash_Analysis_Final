@@ -82,9 +82,7 @@ st.pyplot(fig)
 # Ensure datetime conversion
 combined_df["Date"] = pd.to_datetime(combined_df["Date"], errors="coerce")
 
-# ======================================
 #  Crashes by Month and Day of the Week
-# ======================================
 st.subheader("Crashes by Month and Day of the Week")
 
 combined_df["Month"] = combined_df["Date"].dt.month
@@ -106,9 +104,8 @@ ax_day.set_ylabel("Number of Crashes")
 ax_day.set_title("Crashes by Day of the Week")
 st.pyplot(fig_day)
 
-# ================================
+
 # Airlines with Most Crashes
-# ================================
 st.subheader("Top 15 Airlines with Most Crashes")
 
 df_cleaned = combined_df[combined_df['Operator'].notna() & (combined_df['Operator'].str.strip() != '')]
@@ -122,9 +119,8 @@ ax_ops.set_title("Top 15 Airlines with Most Crashes")
 ax_ops.tick_params(axis='x', rotation=45)
 st.pyplot(fig_ops)
 
-# ============================
 # Aircraft Model Analysis
-# ============================
+
 st.subheader("Top 10 Aircraft Models with Most Crashes")
 
 top_aircrafts = combined_df['Type'].value_counts().head(10)
@@ -137,9 +133,8 @@ ax_type.set_title("Top 10 Aircraft Models with Most Crashes")
 ax_type.tick_params(axis='x', rotation=45)
 st.pyplot(fig_type)
 
-# ==================================
 # Distribution of Fatalities per Crash
-# ==================================
+
 st.subheader("Distribution of Fatalities per Airplane Crash")
 
 df_fatalities = combined_df['Fatalities'].dropna()
@@ -152,9 +147,9 @@ ax_fatal.set_title("Distribution of Fatalities per Airplane Crash")
 ax_fatal.grid(axis='y', linestyle='--', alpha=0.7)
 st.pyplot(fig_fatal)
 
-# ================================
+
 #  Passenger Load vs. Fatality Rate
-# ==================================
+
 st.subheader("Passenger Load vs. Fatality Rate in Airplane Crashes")
 
 df_filtered = combined_df[['Aboard', 'Fatalities']].dropna()
@@ -171,9 +166,8 @@ ax_scatter.legend()
 ax_scatter.grid()
 st.pyplot(fig_scatter)
 
-# ==================================
 # Word Cloud from Crash Summaries
-# ==================================
+
 st.subheader("Common Keywords in Crash Summaries")
 
 summary_text = " ".join(combined_df['Summary'].dropna()).lower()
@@ -298,111 +292,6 @@ st.markdown("###  Classification Report")
 st.text(class_report_text)
 
 
-##k means
-
-from sklearn.cluster import KMeans
-from sklearn.decomposition import PCA
-
-st.subheader("K-Means Clustering")
-
-# Drop NaN values
-df_cleaned = df_clean.dropna()
-
-# Drop columns with datetime or object values
-df_cleaned = df_cleaned.select_dtypes(exclude=['datetime', 'object'])
-
-# Ensure only numerical columns
-df_cleaned = df_cleaned.apply(pd.to_numeric, errors='coerce').dropna()
-
-# Standardize the dataset
-scaler = StandardScaler()
-df_scaled = scaler.fit_transform(df_cleaned)
-
-# Chosen number of clusters
-chosen_k = 3
-
-# Apply K-Means
-kmeans = KMeans(n_clusters=chosen_k, random_state=42, n_init=10)
-df_cleaned['Cluster'] = kmeans.fit_predict(df_scaled)
-
-# Reduce to 2D with PCA for visualization
-pca = PCA(n_components=2)
-df_pca = pca.fit_transform(df_scaled)
-centroids = pca.transform(kmeans.cluster_centers_)
-
-# Scatter plot
-fig_kmeans, ax_kmeans = plt.subplots(figsize=(8, 6))
-for cluster in range(chosen_k):
-    ax_kmeans.scatter(
-        df_pca[df_cleaned['Cluster'] == cluster, 0],
-        df_pca[df_cleaned['Cluster'] == cluster, 1],
-        label=f'Cluster {cluster}', alpha=0.6
-    )
-# Plot centroids
-ax_kmeans.scatter(centroids[:, 0], centroids[:, 1], marker='X', s=200, color='red', label="Centroids")
-
-ax_kmeans.set_title('K-Means Clustering Visualization')
-ax_kmeans.legend()
-st.pyplot(fig_kmeans)
-
-## kmeans classificaiton
-
-from matplotlib.colors import ListedColormap
-
-st.subheader("k-NN Decision Boundaries")
-
-# Preprocess data
-df_cleaned = df_cleaned.dropna()
-df_cleaned = df_cleaned.select_dtypes(include=[np.number])
-
-# Features and labels
-X = df_cleaned.drop(columns=['Cluster'])  # All features except cluster label
-y = df_cleaned['Cluster']
-
-# Normalize
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
-
-# Train-Test Split
-X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
-
-# Train k-NN
-k_value = 11
-knn = KNeighborsClassifier(n_neighbors=k_value)
-knn.fit(X_train, y_train)
-
-# PCA for 2D Visualization
-pca = PCA(n_components=2)
-X_pca = pca.fit_transform(X_scaled)
-
-# Mesh grid for plotting decision boundary
-h = 0.2
-x_min, x_max = X_pca[:, 0].min() - 1, X_pca[:, 0].max() + 1
-y_min, y_max = X_pca[:, 1].min() - 1, X_pca[:, 1].max() + 1
-xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
-
-# Predict labels for mesh points
-Z = knn.predict(pca.inverse_transform(np.c_[xx.ravel(), yy.ravel()]))
-Z = Z.reshape(xx.shape)
-
-# Plot
-fig_knn, ax_knn = plt.subplots(figsize=(8, 6))
-cmap_light = ListedColormap(['#FFAAAA', '#AAAAFF', '#AAFFAA'])
-cmap_bold = ['red', 'blue', 'green']
-
-ax_knn.contourf(xx, yy, Z, cmap=cmap_light, alpha=0.5)
-
-for cluster in np.unique(y):
-    ax_knn.scatter(
-        X_pca[y == cluster, 0],
-        X_pca[y == cluster, 1],
-        label=f'Cluster {cluster}',
-        edgecolor='k'
-    )
-
-ax_knn.set_title(f'k-NN Decision Boundaries (k={k_value})')
-ax_knn.legend()
-st.pyplot(fig_knn)
 
 # Naive
 
@@ -463,7 +352,7 @@ st.markdown(f"**Naive Bayes Model Accuracy:** `{accuracy * 100:.2f}%`")
 
 from sklearn.ensemble import RandomForestClassifier
 
-st.subheader("🌲 Random Forest: Crash Severity Classification")
+st.subheader("Random Forest: Crash Severity Classification")
 
 # Define crash severity if not already defined
 def classify_severity(fatalities):
